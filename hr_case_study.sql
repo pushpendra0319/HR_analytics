@@ -177,6 +177,8 @@ ORDER BY avg_score DESC;
 # Interview scores are barely influencing hiring decisions. This means the process relies heavily 
 # on subjective factors — a major red flag for consistency and fairness that HR should investigate.
 
+#================================================================================================================
+
 # Q21. Which departments pay above the company-wide average salary — 
 # and which are falling behind competitively?
  
@@ -185,9 +187,54 @@ ORDER BY avg_score DESC;
  group by 1
  having avg_salary >(select avg(salary) from employees_hr)
  order by avg_salary desc;
+
  
  select avg (salary) as a_salary from employees_hr ;
  
  select department_name, round(avg(salary),2) as avg_salary 
  from employees_hr inner join department_hr using(department_id)
  group by 1;
+ 
+# Explaation :
+# Only 6 of 12 departments pay above the company average. The 6 below-average departments — 
+# which include Customer Support and Administration — are also the ones with the highest attrition. 
+# Pay below the average directly correlates with people leaving.
+ #=================================================================================================================
+ 
+ # Q22. Which employees have never taken any leave at all — and should they be flagged as potential burnout risks?
+ 
+
+    
+select 
+	employee_id, concat(first_name,' ',last_name) as emp_fullname
+    from employees_hr left join leave_hr using(employee_id) 
+where leave_id is null;
+
+# Explaination : 254 employees (8.5% of the workforce) have never taken any leave. 
+# These employees should be proactively contacted by their managers. Burnout from never 
+# resting often precedes sudden, unexpected resignations.
+
+#=========================================================================================================
+
+# Q23. Which employees have completed more than 3 training programs — and 
+#  are these highly-trained employees being retained and rewarded?
+
+select 
+	employee_id, concat(first_name," ",last_name)as emp_fullname,
+    count(taining_id)as training_taken 
+from employees_hr inner join training_hr using (employee_id)
+group by 1,2
+having training_taken >3
+order by training_taken desc;
+
+# Explaination : Several employees have completed the maximum 6 training programs 
+# and also show strong KPI scores. These are your most invested employees — 
+# if they are not being promoted, they will find growth elsewhere. Cross-reference 
+# with Q28 (excellent performers not recommended for promotion) for urgent action.
+
+#==========================================================================================
+
+#Q24. Who are the top 3 highest-earning employees within each 
+# specific department — not just company-wide?
+select employee_id, salary from employees_hr order by salary desc limit 3;
+   
