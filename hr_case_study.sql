@@ -425,6 +425,181 @@ ORDER BY Exit_Type, cnt DESC;
 
 #===============================================================================================
 
+# Q34. Which newly-hired employees are already underperforming — 
+# making them the highest flight-risk candidates right now?
+
+WITH ranked AS (
+    SELECT e.Employee_ID, e.Hire_Date, d.Department_Name,
+           PERCENT_RANK() OVER (PARTITION BY d.Department_Name ORDER BY e.Hire_Date DESC) AS tenure_pctile
+    FROM employees_hr e JOIN department_hr d ON e.Department_ID = d.Department_ID
+),
+avg_kpi AS (SELECT AVG(KPI_Score) AS company_avg_kpi FROM performance_hr)
+SELECT r.Employee_ID, r.Department_Name, r.Hire_Date, p.KPI_Score
+FROM ranked r
+JOIN performance_hr p ON r.Employee_ID = p.Employee_ID
+CROSS JOIN avg_kpi
+WHERE r.tenure_pctile <= 0.10 AND p.KPI_Score < avg_kpi.company_avg_kpi;
+
+# Explaination : E00246 has a KPI of only 60 — hired just 6 months ago in
+# HR (the department responsible for employee engagement). This is a critical signal.
+# HR should schedule immediate check-ins with these 3 employees and their managers.
+# Early intervention has a much higher success rate than waiting until resignation.
+
+#===============================================================================================
+
+# Q35. What is the full recruitment funnel for each department — 
+# from application to interview to hire — 
+# and which departments convert candidates most efficiently?
+
+SELECT d.Department_Name,
+    COUNT(*) AS applications,
+    SUM(CASE WHEN r.Interview_Date IS NOT NULL THEN 1 ELSE 0 END) AS interviewed,
+    SUM(CASE WHEN r.Hiring_Status = 'Hired' THEN 1 ELSE 0 END) AS hired,
+    ROUND(100.0 * SUM(CASE WHEN r.Hiring_Status = 'Hired' THEN 1 ELSE 0 END) / COUNT(*), 2) AS hire_rate_pct
+FROM recruitment_hr r
+JOIN department_hr d ON r.Department_ID = d.Department_ID
+GROUP BY d.Department_Name
+ORDER BY hire_rate_pct DESC;
+
+# Explaination :  All applicants are being interviewed (100% interview rate) — 
+# which is unusual. The hire rate of ~21-23% is consistent across departments,
+# meaning no single department has a standout bottleneck. However, given
+# that QA and Customer Support have the highest attrition AND consistent hire rates,
+# they are essentially running a costly replacement cycle at the company's expense.
+
+#=======================================================================================================
+
+# Q36. How is the monthly absenteeism rate trending in each department —
+#  which department shows the most worrying pattern?
+
+SELECT d.Department_Name,
+    substr(a.Attendace_Date, 1, 7) AS month,
+    ROUND(100.0 * SUM(CASE WHEN a.Attendance_Status = 'Absent' THEN 1 ELSE 0 END) / COUNT(*), 2) AS absenteeism_rate_pct
+FROM attendance_hr a
+JOIN employees_hr e ON a.Employee_ID = e.Employee_ID
+JOIN department_hr d ON e.Department_ID = d.Department_ID
+GROUP BY d.Department_Name, month
+ORDER BY d.Department_Name, month
+LIMIT 20;
+
+# Explaination : Administration spiked to 11.11% in April 2020 — 
+# above the 10% threshold that should trigger a department check-in.
+# Month-to-month volatility suggests absenteeism here is event-driven.
+# HR should set up a live dashboard alert: any department crossing 10%
+# absenteeism in a month triggers an automatic manager review.
+
+#==============================================================================================
+
+# Q37. Is there a gender pay gap within the same job grade —
+# are male and female employees being paid differently for equivalent roles?
+
+SELECT j.Grade, e.Gender, ROUND(AVG(e.Salary),2) AS avg_salary, COUNT(*) AS headcount
+FROM employees_hr e
+JOIN jobs_hr j ON e.Job_ID = j.Job_ID
+GROUP BY j.Grade, e.Gender
+ORDER BY j.Grade, e.Gender;
+
+# Explaination : At senior grade G10, women actually earn slightly more 
+# than men (₹2,07,505 vs ₹2,04,282). At G1, the gap is minimal (₹356 difference).
+# There is no systemic gender pay gap in this organization. This is a significant
+# positive finding — document it explicitly in the project report as proof of pay equity compliance.
+
+#======================================================================================================
+
+# Q38. Which managers are most effective at leading high-performing teams —
+# and who should be studied as a leadership benchmark?
+
+WITH team_scores AS (
+    SELECT m.Employee_ID AS manager_id, m.First_Name, m.Last_Name,
+           AVG(p.KPI_Score) AS avg_team_kpi,
+           AVG(p.Attendance_Score) AS avg_team_attendance,
+           COUNT(DISTINCT e.Employee_ID) AS team_size
+    FROM employees_hr e
+    JOIN employees_hr m ON e.Manager_ID = m.Employee_ID
+    JOIN performance_hr p ON e.Employee_ID = p.Employee_ID
+    GROUP BY m.Employee_ID, m.First_Name, m.Last_Name
+)
+SELECT *, RANK() OVER (ORDER BY avg_team_kpi DESC) AS kpi_rank
+FROM team_scores
+WHERE team_size >= 3
+ORDER BY kpi_rank
+LIMIT 8;
+
+# Explaination : Hao Kobayashi leads teams averaging a KPI of 86.35 —
+# well above the company average of ~74.8. HR should interview Kobayashi
+# and the top 5 managers to understand their management practices,
+# then codify those behaviors as the company's leadership playbook.
+# The worst-ranking managers should receive targeted coaching.
+
+#=======================================================================================
+
+# Q39. Does completing more training programs lead to lower attrition — 
+# proving that L&D investment has a measurable return?
+
+SELECT training_bucket,
+       ROUND(AVG(kpi_score),2) AS avg_kpi,
+       COUNT(DISTINCT CASE WHEN exited = 1 THEN employee_id END) AS exited_count,
+       COUNT(DISTINCT employee_id) AS total_count
+FROM (
+    SELECT e.Employee_ID AS employee_id,
+        CASE WHEN COUNT(DISTINCT t.Taining_ID) = 0 THEN '0 Trainings'
+             WHEN COUNT(DISTINCT t.Taining_ID) <= 2 THEN '1-2 Trainings'
+             ELSE '3+ Trainings' END AS training_bucket,
+        AVG(p.KPI_Score) AS kpi_score,
+        MAX(CASE WHEN ex.Employee_ID IS NOT NULL THEN 1 ELSE 0 END) AS exited
+    FROM employees_hr e
+    LEFT JOIN training_hr t ON e.Employee_ID = t.Employee_ID
+    LEFT JOIN performance_hr p ON e.Employee_ID = p.Employee_ID
+    LEFT JOIN exit_hr ex ON e.Employee_ID = ex.Employee_ID
+    GROUP BY e.Employee_ID
+) x
+GROUP BY training_bucket ORDER BY training_bucket;
+
+# Explaination : Employees with zero training have a 35.3% attrition rate.
+# Employees with 3+ training programs have only 26.8% — an 8.5 percentage
+# point reduction. KPI scores are similar across groups, meaning training doesn't
+# dramatically boost short-term performance, but it significantly reduces attrition.
+# The business case: invest in L&D to keep people, not just to upskill them.
+
+#=================================================================================================
+
+# Q40. What is the total salary cost of employee turnover in the most recent 12 months —
+#  and what does this mean for the company's bottom line?
+
+SELECT 
+    COUNT(*) AS employees_exited,
+    ROUND(SUM(e.Salary), 2) AS total_annual_salary_lost,
+    ROUND(AVG(ex.Notice_Period), 1) AS avg_notice_period_days
+FROM exit_hr ex
+JOIN employees_hr e
+    ON ex.Employee_ID = e.Employee_ID
+WHERE ex.Exit_Date >= (
+    SELECT DATE_SUB(MAX(Exit_Date), INTERVAL 12 MONTH)
+    FROM exit_hr
+);
+
+# Explaination : 423 employees exited in the most recent 12-month window,
+# representing ₹3.52 crore in annual salary. Using the industry-standard
+# 1.5x cost multiplier (recruitment, onboarding, lost productivity),
+# the true estimated cost of this attrition is approximately ₹5.28 crore annually.
+# This single number, presented to leadership, makes a compelling business
+# case for any retention initiative — even an expensive one.
+
+#===========================================================================================
+
+
+select e.employee_id, h.notice_period from employees_hr e inner join exit_hr h;
+
+
+
+
+
+
+
+
+
+
+
 
 
 
