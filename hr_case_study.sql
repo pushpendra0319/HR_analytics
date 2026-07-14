@@ -236,5 +236,10 @@ order by training_taken desc;
 
 #Q24. Who are the top 3 highest-earning employees within each 
 # specific department — not just company-wide?
-select employee_id, salary from employees_hr order by salary desc limit 3;
-   
+
+select 
+	department_name, employee_id, first_name,salary,
+    dense_rank() over(partition by department_name order by salary desc) as salary_rank
+    from employees_hr inner join department_hr using(department_id)
+    limit 3;
+    
