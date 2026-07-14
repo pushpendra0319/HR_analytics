@@ -237,9 +237,103 @@ order by training_taken desc;
 #Q24. Who are the top 3 highest-earning employees within each 
 # specific department — not just company-wide?
 
-select 
+# there is 2 type solution 1 solution from cte
+with cte as
+(select 
 	department_name, employee_id, first_name,salary,
-    dense_rank() over(partition by department_name order by salary desc) as salary_rank
-    from employees_hr inner join department_hr using(department_id)
-    limit 3;
-    
+    rank() over(partition by department_name order by salary desc) as salary_rank
+    from employees_hr inner join department_hr using(department_id))
+    select* from cte
+    where salary_rank <=3
+    limit 12;
+
+# 2 solution with subquery
+
+    SELECT Department_Name, First_Name, Last_Name, Salary, salary_rank
+FROM (
+    SELECT d.Department_Name, e.First_Name, e.Last_Name, e.Salary,
+           RANK() OVER (PARTITION BY d.Department_Name ORDER BY e.Salary DESC) AS salary_rank
+    FROM employees_hr e
+    JOIN department_hr d ON e.Department_ID = d.Department_ID
+) ranked
+WHERE salary_rank <= 3
+ORDER BY Department_Name, salary_rank
+LIMIT 12;
+
+# Explaination : Finance's top earner (₹2,56,500) earns 3x more than Administration's
+# top earner (₹82,000). This stark contrast explains why Administration has lower 
+# satisfaction and performance scores — the same seniority level is compensated 
+# very differently across departments.
+
+
+# Q25. Are there any employees being paid below the minimum salary
+# defined for their job role — a potential compliance issue?
+
+SELECT e.Employee_ID, e.First_Name, e.Last_Name, e.Salary, j.Job_Title, j.Minimum_Salary
+FROM employees_hr e
+JOIN jobs_hr j ON e.Job_ID = j.Job_ID
+WHERE e.Salary < j.Minimum_Salary
+LIMIT 15;
+
+# Explaination:Every single employee is paid at or above the minimum salary
+# defined for their role. This is a strong compliance signal and should be 
+# explicitly documented in the project report — it shows the company's payroll
+# is clean and internally consistent.
+
+#==================================================================================
+
+# Q26. Which managers have more than 10 direct reports — 
+# and what structural risk does this create
+
+SELECT m.Employee_ID AS Manager_ID, m.First_Name, m.Last_Name,
+       COUNT(e.Employee_ID) AS team_size
+FROM employees_hr e
+JOIN employees_hr m ON e.Manager_ID = m.Employee_ID
+GROUP BY m.Employee_ID, m.First_Name, m.Last_Name
+HAVING COUNT(e.Employee_ID) > 10
+ORDER BY team_size DESC;
+
+# Explaination : 9 managers exceed the 10-report threshold. Tariq Gonzalez manages
+# 15 — nearly double the safe limit. These managers cannot meaningfully coach or 
+# support their teams. HR should immediately review these structures and consider 
+# adding team leads or redistributing reports.
+
+#=======================================================================================
+
+# Q27. What percentage of each department's workforce has exited — 
+# which departments are at crisis-level attrition?
+
+SELECT d.Department_Name,
+       COUNT(DISTINCT ex.Employee_ID) AS exited,
+       COUNT(DISTINCT e.Employee_ID) AS total,
+       ROUND(100.0 * COUNT(DISTINCT ex.Employee_ID) / COUNT(DISTINCT e.Employee_ID), 2) AS attrition_rate_pct
+FROM employees_hr e
+JOIN department_hr d ON e.Department_ID = d.Department_ID
+LEFT JOIN exit_hr ex ON e.Employee_ID = ex.Employee_ID
+GROUP BY d.Department_Name
+ORDER BY attrition_rate_pct DESC;
+
+# Explaination : Customer Support and QA are in crisis — nearly 4 in 10 employees
+# have left. Finance has the lowest attrition (25.69%) and also pays above average.
+# The pattern is clear: higher pay = lower attrition. This should be the primary 
+# recommendation of the project
+
+#============================================================================================
+
+# Q28. Which employees are rated 'Excellent' in performance but are NOT being 
+# recommended for promotion — creating a serious retention risk?
+
+SELECT e.Employee_ID, e.First_Name, e.Last_Name,
+       p.Overall_Rating, p.Promotion_Recommendation
+FROM performance_hr p
+JOIN employees_hr e ON p.Employee_ID = e.Employee_ID
+WHERE p.Overall_Rating = 'Excellent' AND p.Promotion_Recommendation = 'No'
+LIMIT 15;
+
+# Explaination : Multiple Excellent-rated employees are being passed over for promotion.
+# If these individuals are not given a clear growth path, the company will lose 
+# its best people to competitors who will offer what they deserve. This list 
+# should go directly to department heads for immediate action.
+
+#===========================================================================================
+
