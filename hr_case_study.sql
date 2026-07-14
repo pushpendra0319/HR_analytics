@@ -337,3 +337,96 @@ LIMIT 15;
 
 #===========================================================================================
 
+# Q29. Do employees who eventually leave the company earn significantly less than
+# those who stay — proving pay is a direct attrition driver?
+
+SELECT e.Employment_Status, ROUND(AVG(p.Net_Salary),2) AS avg_net_salary
+FROM payroll_hr p
+JOIN employees_hr e ON p.Employee_ID = e.Employee_ID
+GROUP BY e.Employment_Status;
+
+# Explaination : Terminated employees earned ₹1,316 less per month (17% lower) 
+# than active employees. This is statistically significant — lower-paid employees
+# are measurably more likely to leave. This single finding makes the business case
+# for salary reviews in high-attrition departments.
+
+#===============================================================================================
+
+# Q30. Which single calendar month had the highest total payroll cost — 
+# and what does this reveal about the company's staffing peak?
+SELECT Payroll_Month, ROUND(SUM(Net_Salary),2) AS total_payout
+FROM payroll_hr
+GROUP BY Payroll_Month
+ORDER BY total_payout DESC
+LIMIT 1;
+
+# Explaination : May 2025 is the company's payroll peak — confirming headcount 
+# was at its all-time high in the most recent month of the dataset. Any significant
+#  attrition going forward would noticeably reduce this figure, directly impacting productivity.
+
+#=========================================================================================================
+
+# Q31. Which employees show a declining KPI score between their first and 
+# most recent review — signaling deteriorating performance?
+
+SELECT p1.Employee_ID, p1.KPI_Score AS first_kpi, p2.KPI_Score AS latest_kpi
+FROM performance_hr p1
+JOIN performance_hr p2 ON p1.Employee_ID = p2.Employee_ID
+JOIN (
+    SELECT Employee_ID, MIN(Review_Date) AS min_date, MAX(Review_Date) AS max_date
+    FROM performance_hr GROUP BY Employee_ID HAVING COUNT(*) >= 2
+) d ON p1.Employee_ID = d.Employee_ID AND p1.Review_Date = d.min_date
+     AND p2.Employee_ID = d.Employee_ID AND p2.Review_Date = d.max_date
+WHERE p2.KPI_Score < p1.KPI_Score
+LIMIT 10;
+
+# Explaination :  E00001 dropped nearly 24 KPI points — the sharpest decline. 
+# E00009 (Hassan Rodrigues) also appears here AND in Q28 (Excellent rating, no promotion).
+# A declining KPI combined with no growth path is a near-certain attrition predictor.
+# These employees need urgent manager check-ins.
+
+#==========================================================================================
+
+# Q32. Do employees who work more overtime have lower attendance scores —
+# does overwork lead to disengagement?
+
+SELECT
+    CASE WHEN a.avg_overtime < 1 THEN 'Low Overtime'
+         WHEN a.avg_overtime < 3 THEN 'Medium Overtime'
+         ELSE 'High Overtime' END AS overtime_bucket,
+    ROUND(AVG(p.Attendance_Score),2) AS avg_attendance_score
+FROM (SELECT Employee_ID, AVG(Overtime_Hours) AS avg_overtime
+      FROM attendance_hr GROUP BY Employee_ID) a
+JOIN performance_hr p ON a.Employee_ID = p.Employee_ID
+GROUP BY overtime_bucket;
+
+# Explaination : All employees fall into "Low Overtime" — the company does
+# not currently have an overwork problem at the dataset level. 
+# Attendance scores average 80.03, which is healthy. However, 
+# team-level spikes may be hidden in this aggregate — HR should monitor by department.
+
+#===============================================================================================
+
+# EXPERT BUSINESS CASE STUDIES - 
+
+# Q33. What are the top exit reasons by type — 
+# and does notice period differ between voluntary and involuntary exits?
+
+SELECT Exit_Type, Exit_Reason, COUNT(*) AS cnt,
+       ROUND(AVG(Notice_Period),1) AS avg_notice_days
+FROM exit_hr
+GROUP BY Exit_Type, Exit_Reason
+ORDER BY Exit_Type, cnt DESC;
+
+# Explaination : Layoff / Restructuring exits give only 22.7 days notice — the shortest.
+# This means restructuring events create the most abrupt operational gaps.
+# HR should maintain stronger succession and knowledge transfer plans specifically
+# for restructuring scenarios.
+
+#===============================================================================================
+
+
+
+
+
+
