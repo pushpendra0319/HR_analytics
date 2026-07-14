@@ -122,3 +122,72 @@ FROM attendance_hr
 GROUP BY Shift;
 
 # Q17. Monthly Payroll Payout
+select * from payroll_hr;
+select payroll_month, round(sum(net_salary),2) as total_salary from 
+payroll_hr  group by 1
+order by payroll_month ;
+
+# Q18. What are the most common reasons employees are leaving — 
+# and does the exit type change the pattern significantly?
+
+select exit_type, exit_reason, count(*) as exit_count
+from exit_hr group BY 1,2
+ORDER BY EXIT_COUNT DESC;             
+
+# Explanation :
+# 72% of all exits are voluntary and therefore preventable. The top reason — "Better Opportunity" — 
+# means the company is losing talent to competitors. HR must focus on career growth programs 
+# and compensation reviews to close this gap.
+
+# Q19. Which departments are recruiting the most candidates — 
+# is this driven by growth or by constant replacement of people who keep leaving?
+
+select 
+	department_name, count(*) as applications
+    from recruitment_hr inner join department_hr 
+    using (department_id)
+group by 1
+order by applications desc;
+
+# Explanation:  QA recruits the most (798 applications) AND has the second-highest attrition 
+# (38.28%). This is a classic replacement cycle — QA is hiring to replace people who leave, 
+# not to grow. The cost of constantly recruiting for QA roles should be a wake-up call for leadership.
+
+
+# Which departments are recruiting the most candidates — 
+# is this driven by growth or by constant replacement of people who keep leaving?
+
+select 
+	department_name,hiring_status, count(*) as total_aplications 
+    from recruitment_hr inner join department_hr using(department_id)
+    where hiring_status = 'Hired'
+group by 1,2
+order by total_aplications desc;
+
+
+# Q20. Does a candidate's interview score actually predict whether they get hired — 
+# or are hiring decisions being made subjectively?
+
+SELECT Hiring_Status, ROUND(AVG(Interview_Score),2) AS avg_score, COUNT(*) AS candidates
+FROM recruitment_hr
+GROUP BY Hiring_Status
+ORDER BY avg_score DESC;
+
+# Explanation : The difference between Hired (65.24) and Rejected (64.60) is less than 1 point. 
+# Interview scores are barely influencing hiring decisions. This means the process relies heavily 
+# on subjective factors — a major red flag for consistency and fairness that HR should investigate.
+
+# Q21. Which departments pay above the company-wide average salary — 
+# and which are falling behind competitively?
+ 
+ select department_name, round(avg(salary),2) as avg_salary 
+ from employees_hr inner join department_hr using(department_id)
+ group by 1
+ having avg_salary >(select avg(salary) from employees_hr)
+ order by avg_salary desc;
+ 
+ select avg (salary) as a_salary from employees_hr ;
+ 
+ select department_name, round(avg(salary),2) as avg_salary 
+ from employees_hr inner join department_hr using(department_id)
+ group by 1;

@@ -1,4 +1,4 @@
-create database HR_analytics;
+gicreate database HR_analytics;
 use HR_analytics;
 show tables;
 
