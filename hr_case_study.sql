@@ -107,74 +107,142 @@ order by budget desc;
 # a potential mismatch that could affect IT employee satisfaction and contribute to their 30.4% attrition rate.
 #=============================================================================================================
 
-
-# Q9. Employee Directory with Department & Job Title
-# Objective: Build a readable directory instead of raw ID codes.
+# Q9. Build a full employee directory showing each person's actual department name
+# and job title instead of just ID codes?
 
 select
-employee_id, concat(first_name,' ',last_name) as full_name,
-department_name,job_title 
+	employee_id, concat(first_name,' ',last_name) as full_name,
+	department_name,job_title 
 from department_hr inner join employees_hr using(department_id)
 inner join jobs_hr using(job_id);
 
-# Q10. Headcount per Department 
+# Explaination : The 3-table JOIN works cleanly across all 3,000 employees, confirming
+# referential integrity is intact. This query is the backbone of any HR dashboard.
+#==================================================================================================
+
+# Q10. How many employees work in each department — which are the largest and smallest?
+
 select 
 department_name, count(employee_id) as headcount
 from employees_hr inner join department_hr using(department_id)
 group by 1 order by headcount desc;
 
-# Q11. Average Salary per Department
+# Explaination : IT is the largest department with 523 employees. IT also has a 30.4% attrition rate —
+# meaning the company's largest and likely most critical department is losing nearly 1 in 3 people.
+# This should be the single biggest retention focus.
+#================================================================================================================
+
+# Q11. What is the average salary in each department —
+# and which departments pay significantly more or less than others?
 
 select 
-department_name,round(avg(salary),2)as avg_salary 
-from employees_hr inner join department_hr using(department_id)
+	department_name,round(avg(salary),2)as avg_salary 
+from employees_hr 
+inner join department_hr using(department_id)
 group by 1 order by avg_salary desc;
 
-# Q12. Average KPI Score per Department
+# Explaination : R&D pays the most (₹1,20,082 avg). Customer Support —
+# which has the highest attrition (39.61%) — sits at the bottom of the salary table.
+# Lower pay in high-pressure roles directly drives attrition. This is a clear recommendation
+# for a Customer Support salary review.
+#======================================================================================================================
+
+# Q12. Which department has the highest average KPI performance score, and which is performing the lowest?
+
 select
-department_name, round(avg(kpi_score),2) as avg_kpi
-from department_hr inner join employees_hr using(department_id)
+	department_name, round(avg(kpi_score),2) as avg_kpi
+from department_hr 
+inner join employees_hr using(department_id)
 inner join performance_hr using(employee_id)
 group by 1 ;
 
-# Q13. Direct Reports per Manager
+# Explaination :  Legal leads at 75.59 while Administration scores the lowest at 73.70.
+# Administration also has the highest budget (₹65 lakhs) — high cost, low performance is a
+# concern worth flagging to leadership.
+#======================================================================================================================
 
-SELECT Manager_ID, COUNT(*) AS direct_reports
+#Q13. How many employees report to each manager — and are any managers dangerously overloaded?
+
+SELECT 
+	Manager_ID, COUNT(*) AS direct_reports
 FROM employees_hr
 WHERE Manager_ID IS NOT NULL
 GROUP BY Manager_ID
 ORDER BY direct_reports DESC
 LIMIT 10;
-select manager_id  from employees_hr
+
+select 
+	manager_id  from employees_hr
 WHERE Manager_ID IS NOT NULL;
 
-# Q14. Training Spend per Department
-select department_name, sum(training_cost) as training_costt from 
-training_hr inner join employees_hr using(employee_id)
-inner join department_hr using(department_id) group by 1
+# Explaination : Tariq Gonzalez (E00003) manages 15 people — nearly double the recommended limit of 7-8.
+# 9 managers have more than 10 direct reports. Overloaded managers cannot effectively support their teams,
+# directly contributing to performance issues and attrition.
+#============================================================================================================
+
+
+# Q14. How much has each department spent on employee training —
+# is the investment proportional to size and need?
+
+select 
+	department_name, sum(training_cost) as training_costt 
+from training_hr 
+inner join employees_hr using(employee_id)
+inner join department_hr using(department_id)
+ group by 1
 order by training_costt desc;
 
-# Q15. Leave Requests by Type 
+# Explaination : Customer Support — which has the highest attrition (39.61%) —
+# receives the least training investment. This is a clear L&D gap. Increasing
+# Customer Support training spend could directly reduce their dangerously high attrition rate.
+#===========================================================================================================
+
+# Q15. How are employee leave requests distributed across leave types —
+# and which type is most heavily used?
 select
-employee_id,concat(first_name," ",last_name)as full_name,
-gender,leave_type 
+	employee_id,concat(first_name," ",last_name)as full_name,
+	gender,leave_type 
 from leave_hr inner join employees_hr using(employee_id);
 
-select leave_type,count(*)as request_count, round(avg(total_days),1) as avg_days 
+#right query according qus. 
+select 
+	leave_type,count(*)as request_count, round(avg(total_days),1) as avg_days 
 from leave_hr
 group by leave_type order by request_count desc;
 
-# Q16. Working Hours & Overtime by Shift
+# Explaination : Sick and Casual leave are nearly equal — suggesting some employees
+# may be using Casual leave as informal sick days. Maternity leave averages 75.2 days,
+# far longer than all others, requiring careful coverage planning in departments with many young employees.
+#==================================================================================================================
 
-SELECT Shift, ROUND(AVG(Working_Hours),2) AS avg_hours, ROUND(AVG(Overtime_Hours),2) AS avg_overtime
+# Q16. Do employees working different shifts (Morning, Evening, Night) 
+# work different average hours — is any shift being overworked?
+
+SELECT
+	Shift, ROUND(AVG(Working_Hours),2) AS avg_hours,
+    ROUND(AVG(Overtime_Hours),2) AS avg_overtime
 FROM attendance_hr
 GROUP BY Shift;
 
-# Q17. Monthly Payroll Payout
-select * from payroll_hr;
-select payroll_month, round(sum(net_salary),2) as total_salary from 
-payroll_hr  group by 1
+# Explaination> All three shifts are nearly identical — no single shift is being
+# disproportionately overworked. However, overtime exists across all shifts, meaning
+# the company is running lean and any unexpected absence could tip teams into overwork territory.
+#===============================================================================================================
+
+
+# Q17. How has the total monthly payroll payout grown over time — and what does
+# this reveal about the company's growth trajectory?
+
+select 
+	payroll_month, round(sum(net_salary),2) as total_salary 
+from payroll_hr  
+group by 1
 order by payroll_month ;
+
+# Explaination-> Payroll has grown 85x from January 2020 to May 2025 — reflecting the
+# company's massive expansion. The peak is May 2025, when headcount was at its all-time high.
+# Finance should use this trend to project future payroll costs.
+#====================================================================================================================
 
 # Q18. What are the most common reasons employees are leaving — 
 # and does the exit type change the pattern significantly?
