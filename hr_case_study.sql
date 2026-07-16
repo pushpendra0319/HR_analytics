@@ -1,11 +1,20 @@
 # Active Employees
 # Objective: Identify all currently active employees to understand current workforce size.
+
+# Q1. How many employees are currently active in the company, and who are they?
+
 select 
 employee_ID,concat(first_name," ",last_name)as full_name,
 department_id,job_id from employees_hr 
 where employment_status ='active';
 
-# Q2. High Minimum-Salary Roles
+# Explanation : Out of 3,000 total employees, 2,015 are Active and 929 are Terminated — meaning 67% 
+# of the workforce is currently active. All performance, payroll, and leave data should be interpreted 
+# against this active base of 2,015.
+
+#===============================================================================================================================
+
+# Q2. Which job roles have a minimum salary above ₹60,000, and how do their salary bands compare?
 # Objective: Find job roles with a minimum salary above 60,000 
 # to understand senior-role compensation bands.
 
@@ -13,6 +22,13 @@ select * from jobs_hr
 where minimum_salary >'60000' 
 order by minimum_salary desc
 limit 10;
+
+# Explainatio : The CTO role has the highest minimum salary at ₹1,90,000. All G10-grade C-suite roles 
+# start above ₹1,50,000. If even one of these positions stays vacant, recruitment costs are enormous — 
+# making these roles the highest retention priority.
+
+#======================================================================================================================================
+
 
 # Q3. Recent Hires
 # Objective: Find employees hired after Jan 1, 2023
