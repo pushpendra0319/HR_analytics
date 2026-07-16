@@ -57,34 +57,56 @@ from training_hr where certification_status ='completed';
 
 #=====================================================================================================================
 
-# Q5. Pending Leave Requests
-# Objective: Find leave requests still awaiting approval.
+# How many leave requests are currently pending approval — 
+# and which employees have been waiting the longest?
 
 select 
 leave_id,employee_id,leave_type, total_days, approval_status 
 from leave_hr
 where approval_status ='pending';
 
-# Q6. Contract Employees
-# Objective: Identify all contract (non-permanent) employees.
+# Explaination : There are 1,488 pending leave requests — and some date back to 2020,
+# meaning they've been waiting years without a decision. This is a serious operational
+# red flag requiring immediate attention.
+
+#=========================================================================================================
+
+#Q6. How many employees are on contract rather than full-time —
+# and which departments depend heavily on temporary workers?
 
 select 
 employee_id, concat(first_name," ",last_name) as full_name, 
 gender,address,department_id,job_id from
 employees_hr where employment_type = 'contract';
 
-# Q7. Top 5 Highest-Paid Employees
-# Objective: Find the five highest-paid employees company-wide.
+# Explaination : Contract employees span multiple departments including R&D, Operations,
+# and IT. Departments heavily dependent on contracts face delivery risks if several contractors
+# exit simultaneously. HR should proactively maintain replacement pipelines.
+#=========================================================================================================
+
+# Who are the five highest-paid employees in the entire company?
 
 select 
 employee_id,concat(first_name,' ',last_name)as ful_name,salary
 from employees_hr order by salary desc 
 limit 5;
 
-# Q8. Departments List
-# Objective: List all departments with location and budget.
+# Explaination : All five top earners fall within the G10 salary band (₹1,90,000–₹2,70,000),
+# confirming the pay structure is consistent at the top level. No salary anomalies detected.
+#==========================================================================================================================
 
-select * from department_hr;
+
+# Q8. What are all the departments in the company, where are they located, and how do their budgets compare?
+
+select 
+	department_id, department_name, location, budget 
+from department_hr
+order by budget desc;
+
+# Explaination : IT has the largest headcount (523 employees) but one of the lower budgets (₹16,70,528) —
+# a potential mismatch that could affect IT employee satisfaction and contribute to their 30.4% attrition rate.
+#=============================================================================================================
+
 
 # Q9. Employee Directory with Department & Job Title
 # Objective: Build a readable directory instead of raw ID codes.
