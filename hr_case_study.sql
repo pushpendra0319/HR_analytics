@@ -29,9 +29,9 @@ limit 10;
 
 #======================================================================================================================================
 
+# Q3. Which employees were hired after January 1, 2023, 
+# and in which departments are they concentrated?
 
-# Q3. Recent Hires
-# Objective: Find employees hired after Jan 1, 2023
 select 
 employee_id,
 concat(first_name," ",last_name)as full_name,
@@ -40,11 +40,22 @@ from employees_hr
 where hire_date>'2023-01-01'
 order by hire_date desc;
 
-# Q4. Completed Training Programs
-# Objective: List training programs employees have fully completed.
+# Explaination : Hiring is still active as recently as May 2025. These employees have under 2 years of tenure,
+# making them statistically higher flight-risk candidates. HR should prioritize engagement check-ins with this cohort.
+
+#============================================================================================================================
+
+# Q4. Which training programs have employees fully completed, and which providers are most commonly used?
+
 select
 employee_id, training_name,certification_status
 from training_hr where certification_status ='completed';
+
+# Explaination : Completed programs span providers like LinkedIn Learning, AWS Training, and Scrum.org.
+# These are practical, job-relevant programs — a strong sign that employees are completing
+# meaningful training, not just box-ticking.
+
+#=====================================================================================================================
 
 # Q5. Pending Leave Requests
 # Objective: Find leave requests still awaiting approval.
